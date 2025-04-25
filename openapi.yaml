@@ -1,0 +1,130 @@
+openapi: 3.0.0
+info:
+  title: Federated Alignment API
+  version: 0.3.0-alpha
+  description: |
+    Minimal REST contract for publishing, discovering, and matching
+    AlignmentObjects across federated graph servers.
+servers:
+  - url: https://api.example.com
+paths:
+  /entities:
+    post:
+      summary: Register or update an Entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Entity" }
+      responses:
+        "201": { description: Created }
+  /alignmentObjects:
+    post:
+      summary: Publish AlignmentObject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlignmentObject" }
+      responses:
+        "201": { description: Created }
+    get:
+      summary: List / filter public AlignmentObjects
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: tags
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Filtered list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AlignmentObject" }
+  /alignmentObjects/{id}:
+    delete:
+      summary: Withdraw object (consent revocation)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Deleted }
+  /matches:
+    get:
+      summary: Ranked matches for a given Entity DID
+      parameters:
+        - name: did
+          in: query
+          required: true
+          schema: { type: string }
+        - name: price
+          in: query
+          schema: { type: number, default: 0 }
+        - name: max_privilege
+          in: query
+          schema:
+            type: string
+            enum: [public, implicit, explicit]
+            default: public
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchList" }
+
+components:
+  schemas:
+    Entity:
+      type: object
+      required: [did, label, type]
+      properties:
+        did: { type: string, example: "did:plc:company_xyz" }
+        label: { type: string }
+        type:  { type: string, enum: [Corporation, Individual, DAO, Government, AI_Agent] }
+        public: { type: boolean, default: true }
+        tags: { type: array, items: { type: string } }
+
+    AlignmentObject:
+      type: object
+      required: [actor_did, path, label, public, consent, tags]
+      properties:
+        id: { type: string, readOnly: true }
+        actor_did: { type: string }
+        path: { type: string, example: "/alignment/job_recruitment/employer_postings/full_time_role" }
+        label: { type: string, maxLength: 140 }
+        public: { type: boolean }
+        consent:
+          type: string
+          enum: [explicit, implicit, absent]
+        tags:
+          type: array
+          items: { type: string }
+        alignment_vector:
+          type: array
+          items: { type: number }
+          minItems: 768
+          maxItems: 768
+        extra_meta_uri: { type: string, format: uri }
+        links:
+          type: array
+          items: { type: string }
+
+    MatchList:
+      type: object
+      required: [subject, results]
+      properties:
+        subject: { type: string }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              score: { type: number }
+              path: { type: string }

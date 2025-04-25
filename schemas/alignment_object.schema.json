@@ -1,0 +1,42 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "alignment_object.schema.json",
+    "title": "AlignmentObject",
+    "type": "object",
+    "required": [
+      "actor_did",
+      "path",
+      "label",
+      "public",
+      "consent",
+      "tags"
+    ],
+    "properties": {
+      "id":        { "type": "string" },
+      "actor_did": { "type": "string", "pattern": "^did:" },
+      "path":      { "type": "string", "pattern": "^/alignment/" },
+      "label":     { "type": "string", "maxLength": 140 },
+      "public":    { "type": "boolean" },
+      "consent":   { "enum": ["explicit", "implicit", "absent"] },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 1,
+        "maxItems": 20
+      },
+      "alignment_vector": {
+        "type": "array",
+        "minItems": 768,
+        "maxItems": 768,
+        "items": { "type": "number" }
+      },
+      "extra_meta_uri": { "type": "string", "format": "uri" },
+      "links": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "created_at": { "type": "string", "format": "date-time" }
+    },
+    "additionalProperties": false
+  }
+  

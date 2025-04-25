@@ -1,0 +1,19 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "entity.schema.json",
+    "title": "Entity",
+    "type": "object",
+    "required": ["did", "label", "type"],
+    "properties": {
+      "did":   { "type": "string", "pattern": "^did:" },
+      "label": { "type": "string" },
+      "type":  { "enum": ["Corporation", "Individual", "DAO", "Government", "AI_Agent"] },
+      "public": { "type": "boolean", "default": true },
+      "tags": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "additionalProperties": false
+  }
+  
