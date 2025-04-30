@@ -1,10 +1,21 @@
 📡 Federated Alignment API
+
 A minimal, open protocol for AI-assisted matching between people, projects, and organizations — across ecosystems, platforms, and federated networks.
 
 The Federated Alignment API (FA-API) is a lightweight, extensible specification for expressing and discovering alignment objects — such as job posts, project needs, funding offers, skillsets, or collaboration intents — in a standardized format. Designed to support interoperability between apps, agents, and humans, FA-API connects distributed graphs of “who needs what” and “who offers what,” enabling scalable alignment across use cases.
 
+Deeper than this, the FA-API is a protocol for building a federated alignment graph, going at the heart of what divides humans, machines, ecosystems, and any other digital representation of an embodied network.
+
+There are two main components to the FA-API:
+1. The alignment object schema, which defines the structure of the data that can be published to the FA-API.
+2. The alignment graph, which is the actual graph that is built by the FA-API.
+
+These can have implementations in a variety of use cases, where communication and alignment between humans, organizations, machines, and living breathing ecosystems of Earth is sought. More or less any enterprise of Earth has its bottleneck in the alignment of its people, projects, and organizations. And if we do not solve alignment with each other, with AI, with the environment, our future existence on Earth is at risk.
+
+The use cases and core components that make FA-API a forkable, extensible, and interoperable architecture are as follows:
+
 ## Core features
-- Shared alignment object schema (needs / offers / archetypes / skills)
+- Shared alignment object schema (needs / offers / archetypes / skills etc.)
 - Cross-platform identity via DIDs (e.g. BlueSky, wallets, ActivityPub)
 - Consent-aware metadata (public, private, consent_required)
 - Modular match algorithms (rules, vectors, LLMs)
@@ -19,11 +30,43 @@ The Federated Alignment API (FA-API) is a lightweight, extensible specification 
 - 🧙 Influencer–brand matching
 - 🧬 Funder–founder graph alignment
 - 🏕️ Retreat & regenerative community matching
+- ... Long list you can co-generate together with AI. And you are welcome to add them to the use_cases folder
 
-This is not a platform. It's a contract.
-Anyone can build vertical apps that speak FA-API. The protocol empowers decentralized collaboration, not central ownership.
+This is not a platform. It's a contract between FA-APIs that we can implement and expose to separate platforms if we like or to other entites we want to co-align.
+Anyone can build vertical apps that speak FA-API. The protocol empowers decentralized collaboration, not central ownership. 
+
+Feel free to add your use cases to the use_cases, not only to the use_cases folder, but right here in the README.md, and we can see if we can establish the reasonable data-cross communication along the public alignment objects of our respective ecosystems. 
+
+Feel free to make foundational contributions to the resolutions of the many sub-problems that arise in solving alignment.
+
+The initial project I tackle for the FA-API is the interoperability of our different FA-API implementations or similar federated systems.
+
+The FA-API governances evaluates solutions for contributions along how well it facilitates alignment ^ especially in the bit of foundational web specifications we can co-create here.
+
+There are various entities that can be reasonably thought of as "alignment objects" within the consortium managing the FA-API, and it is worthwhile also take a moment to reflect on the principles of relevant "alignment objects" for this consortium - such as the master branch of this code base.
+
+One such "alignment object" is the entity schema, which is the core of the FA-API. We need to express in here relevant information for alignment and whether alignment here is consented, doesnt need to be consent, private or public. We need to decide what the base schema supports - eg crypto addresses, dids - the information needed for alignment along a particular dimension. 
+
+Members join the FA-API consortium and earn the right to decide on such foundational specifications - and any human is welcome to opine. 
+
+Let's take a look at some possible sketches for the entity schema, and not be rigid about it, until we have a consensus in the consortium, and we have tested working implements with a variety of FA-API implementations.
+
+Here's a draft of the entity schema:
+{
+    "$schema": "schemas/entity.schema.json",
+    "$id": "entity.schema.json",
+    "title": "Entity",
+    "type": "object",
+    "required": ["did", "label", "privacy", "consent","type"],
+    "optional": [ "tags", "links", "extra_meta_uri", "alignment_vector"]
+}
 
 
+Once you have the FA-API implemented, you can actually begin aligning with the FA-API consortiums AI agents, with whom we co-create the architecture and implemtantion.
+This is a core first step of the FA-API, to enable that cross-communication with AIs to facilitate our alignment. I am intrigued at how we can visualize
+the resulting alignment graphs that really need our visual inspection and feedback initially within the AI ecosystem, and possibly later 1-1... 
+
+Thats core infrastructure that FA-API implementations can solve.
 
 # What problem is the Federated Alignment API actually solving?
 ### 🔥 Why This Protocol Exists
@@ -35,6 +78,8 @@ Anyone can build vertical apps that speak FA-API. The protocol empowers decentra
 | Consent & privacy complexity           | Ad-hoc Terms of Service, email opt-ins, duplicative GDPR implementations  | Third parties can't reliably know if sharing data is legal                      |
 | Cost of deep AI matching               | Every org builds embeddings or calls GPT independently                    | Redundant compute costs; small orgs get priced out                              |
 | No canonical IDs                       | Email ≠ LinkedIn ≠ wallet ≠ Discord ≠ DID                                 | Cross-platform identity mapping is manual, fragmented, and error-prone          |
+| Alignment is hard to visualize         |                         | We need to see the alignment graphs to understand how to align better          |
+| Alignment is hard                      | We talk to each other from our own point of view                  
 
 ## What FA-API contributes
 
@@ -49,7 +94,7 @@ Anyone can build vertical apps that speak FA-API. The protocol empowers decentra
 | g. Plug-in graph adapters | Reference code for Arango/Neo4j/NetworkX removes boilerplate for newcomers.                           |
 
 
-3 Is this “clever” or genuinely new?
+3 Is this genuinely new?
 Closest analogues
 ActivityPub federates micro-blogs; Open Referral standardises human-services data; Schema.org offers loose JSON-LD hints.
 None unify (a) business-grade consent, (b) multi-domain ontology, and (c) AI-ready match scoring in a single, minimal contract.
@@ -108,6 +153,31 @@ Any vertical — job boards, coral reef credits, bounty boards — can publish b
 🔗 Longer descriptions belong in `extra_meta_uri`, not in the base graph.
 
 ---
+
+
+### Full-Vision Recap (“Where we’re heading”)
+- Agents live everywhere – Sam-AI on one server, Birger-AI on another; both own DIDs that double as AT-Proto/BlueSky handles.
+
+- Inbox layer – Each agent watches its BlueSky feed (or AT feed proxy) for AlignmentObjects addressed to its DID.
+
+- Polling / Push
+- Low-resource: periodic /matches?did=… polls across trusted FA-API nodes.
+
+- High-resource: subscribe to webhook or Firehose for near-real-time callback.
+
+- Graph layer – Incoming objects are persisted as nodes; edges record recipient, accepts, fulfills.
+
+- Deep-AI filter – Only after cheap tag checks does the agent spend LLM tokens to verify sentiment, policy compliance, ethical alignment, etc.
+
+- Action layer – Agent posts a new AlignmentObject (reply, proposal, vote) or establishes a calendar event / escrow contract.
+
+- Goal statement “Humans align through agent-mediated objects that encode real intentions, not generic chat.”
+
+
+# Practical Next Steps
+cd fa_api_demo
+pytest -q           
+uvicorn main:app --reload
 
 
 # Glossary

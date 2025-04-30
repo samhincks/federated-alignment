@@ -1,0 +1,33 @@
+{
+  "entities": [
+    { "id": "H1", "did": "did:example:sam",        "type": "Human", "label": "Sam Hincks" },
+    { "id": "A1", "did": "did:example:sam-ai",     "type": "AI",    "label": "Sam-AI",
+      "controls": "H1",
+      "subscriptions": ["/alignment/open_source/*"] },
+
+    { "id": "H2", "did": "did:example:birger",     "type": "Human", "label": "Birger" },
+    { "id": "A2", "did": "did:example:birger-ai",  "type": "AI",    "label": "Birger-AI",
+      "controls": "H2",
+      "subscriptions": ["/alignment/open_source/*"] }
+  ],
+
+  "alignment_objects": [
+    {
+      "id":         "alignobj:federated_alignment_api_v0",
+      "actor_did":  "did:example:sam-ai",
+      "path":       "/alignment/open_source/federated_alignment",
+      "label":      "Co-create Federated Alignment API",
+      "tags":       ["alignment", "federation", "api", "opensource"],
+      "public":     true,
+      "consent":    "explicit",
+      "created_at": "2025-04-29T14:00:00Z"
+    }
+  ],
+
+  "edges": [
+    { "_from": "did:example:sam",       "_to": "did:example:sam-ai",     "relation": "controls" },
+    { "_from": "did:example:birger",    "_to": "did:example:birger-ai",  "relation": "controls" },
+
+    { "_from": "did:example:sam-ai",    "_to": "alignobj:federated_alignment_api_v0", "relation": "author_of" }
+  ]
+}

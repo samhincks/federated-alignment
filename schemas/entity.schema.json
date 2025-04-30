@@ -3,17 +3,52 @@
     "$id": "entity.schema.json",
     "title": "Entity",
     "type": "object",
+  
     "required": ["did", "label", "type"],
+  
     "properties": {
-      "did":   { "type": "string", "pattern": "^did:" },
-      "label": { "type": "string" },
-      "type":  { "enum": ["Corporation", "Individual", "DAO", "Government", "AI_Agent"] },
-      "public": { "type": "boolean", "default": true },
+      "did": {
+        "type": "string",
+        "pattern": "^did:",
+        "description": "Self-sovereign Decentralized Identifier for this entity."
+      },
+  
+      "label": {
+        "type": "string",
+        "description": "Human-readable name (company, person, DAO handle, etc.)."
+      },
+  
+      "type": {
+        "enum": ["Corporation", "Individual", "DAO", "Government", "AI_Agent"],
+        "description": "High-level class of actor."
+      },
+  
+      "public": {
+        "type": "boolean",
+        "default": true,
+        "description": "If false, this entity profile must not be re-broadcast."
+      },
+  
       "tags": {
         "type": "array",
-        "items": { "type": "string" }
+        "description": "Optional keywords for quick filtering.",
+        "items": { "type": "string" },
+        "maxItems": 25
+      },
+  
+      "autonomous": {
+        "type": "boolean",
+        "default": false,
+        "description": "True if this DID is operated by an autonomous AI agent."
+      },
+  
+      "inbox_uri": {
+        "type": "string",
+        "format": "uri",
+        "description": "Optional endpoint where FA-API messages for this entity should be POSTed.  If omitted, rely on service blocks inside the DID document."
       }
     },
+  
     "additionalProperties": false
   }
   
