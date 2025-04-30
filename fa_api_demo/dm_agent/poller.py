@@ -18,7 +18,8 @@ from dm_agent.bluesky_dm import BlueskyDMFetcher
 
 load_dotenv()
 
-AI_DID = os.getenv("AI_DID")
+HANDLE   = os.getenv("FED_HANDLE")
+APP_PW   = os.getenv("FED_APP_PW")
 FAAPI_URL = os.getenv("FAAPI_URL", "http://localhost:8000")
 POLL_SEC = 10
 
@@ -31,7 +32,7 @@ def route(text: str):
 # ─── post to graph ─────────────────────────
 async def post_alignment(text, sender, path, tags):
     payload = {
-        "actor_did": AI_DID,
+        "actor_did": HANDLE,
         "path": path,
         "label": text[:140],
         "tags": tags,
@@ -46,35 +47,21 @@ async def post_alignment(text, sender, path, tags):
         r.raise_for_status()
         return r.json()["id"]
 
-# ─── reply helper ─────────────────────────
-def _reply_client() -> Client:
-    c = Client()
-    c.login(os.getenv("FED_HANDLE"), os.getenv("FED_APP_PW"))
-    return c
 
-async def send_reply(dm_api, convo_id, text):
-    dm_api.send_message(
-        models.ChatBskyConvoSendMessage.Data(
-            convo_id=convo_id,
-            message=models.ChatBskyConvoDefs.MessageInput(text=text),
-        )
-    )
+
 
 # ─── main loop ────────────────────────────
 async def run():
-    if not AI_DID:
-        raise SystemExit("Set AI_DID env var.")
-
-    fetcher = BlueskyDMFetcher()                   # uses env vars
-    dm_api  = _reply_client().with_bsky_chat_proxy().chat.bsky.convo
+    fetcher = BlueskyDMFetcher(HANDLE, APP_PW)                  # uses env vars
 
     print(f"🤖 DM agent polling every {POLL_SEC}s")
     while True:
         for convo_id, msg in fetcher.fetch_new_messages():
-            path, tags = route(msg.text or "")
-            oid = await post_alignment(msg.text or "", msg.sender_did, path, tags)
-            print("Stored object", oid)
-            await send_reply(dm_api, convo_id, "Logged your message. Thanks!")
+            print(msg)
+            #oid = await post_alignment(msg.text or "", msg.sender_did, path, tags)
+            #print("Stored object", oid)
+            fetcher.send_reply(convo_id, "Logged your message. Thanks!")
+            print("sent reply")
         await asyncio.sleep(POLL_SEC)
 
 if __name__ == "__main__":

@@ -54,6 +54,17 @@ class BlueskyDMFetcher:
             self._client = cl
         return self._client
 
+      # ── public: reply --------------------------------------------
+    def send_reply(self, convo_id: str, text: str):
+        cl = self._client_logged_in()
+        dm_api = cl.with_bsky_chat_proxy().chat.bsky.convo
+        dm_api.send_message(
+            models.ChatBskyConvoSendMessage.Data(
+                convo_id=convo_id,
+                message=models.ChatBskyConvoDefs.MessageInput(text=text),
+            )
+        )
+
     # ─── public API ───────────────────────────────────────────────
     def fetch_new_messages(
         self,
@@ -67,6 +78,7 @@ class BlueskyDMFetcher:
 
         cursor = self._load_cursor()        # {convo_id: last_msg_id}
         new_cursor = dict(cursor)
+        my_bot_did = client.me.did  # Get the bot's own DID
 
         results: list[Tuple[str, models.ChatBskyConvoDefs.MessageView]] = []
 
@@ -81,11 +93,11 @@ class BlueskyDMFetcher:
 
             # walk oldest→newest so order is preserved
             for m in msgs.messages:
-                print("last seen", last_seen)
-                print("m", m.id)
-
                 if m.id == last_seen:
                     break
+
+                if m.sender == my_bot_did:
+                    continue  # skip messages sent by this bot
                 unseen_msgs.append(m)
 
             for m in unseen_msgs:
