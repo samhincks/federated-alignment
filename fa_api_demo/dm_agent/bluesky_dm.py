@@ -56,10 +56,27 @@ def fetch_new_messages() -> list[Tuple[str, models.ChatBskyConvoDefs.MessageView
     for convo in convo_list.convos:
         last_seen = cursor.get(convo.id)
         msgs = dm_api.get_messages(models.ChatBskyConvoGetMessages.Params(convo_id=convo.id))
+        unseen_msgs = []
+        
+      
         # walk oldest→newest so order is preserved
-        for m in reversed(msgs.messages):
-            print(last_seen)
+        for m in msgs.messages:
+            print("last seeen", last_seen)
+            print("m", m.id)
+            
+            if m.id == last_seen:
+                break
+            unseen_msgs.append(m)
+          
+           
+        
+        for m in unseen_msgs:
             results.append((convo.id, m))
+        
+        if msgs.messages:
+            new_cursor[convo.id] = msgs.messages[0].id  # messages[0] is newest
+
+    _save_cursor(new_cursor)    
     return results
 
-    _save_cursor(new_cursor)
+       

@@ -73,7 +73,7 @@ async def run():
     while True:
         for convo_id, msg in fetch_new_messages():
             path, tags = route(msg.text or "")
-            obj_id = await post_alignment(msg.text or "", msg.sender_did, path, tags)
+            obj_id = "1234567890" #await post_alignment(msg.text or "", msg.sender_did, path, tags)
             print(f"📝 Stored AlignmentObject {obj_id}")
 
             await dm_reply(
