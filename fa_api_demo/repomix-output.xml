@@ -1,0 +1,818 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+4. Repository files, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+<additional_info>
+
+</additional_info>
+
+</file_summary>
+
+<directory_structure>
+dm_agent/
+  .dm_cursor.json
+  .env
+  bluesky_dm.py
+  poller.py
+  tests.py
+docs/
+  00_overview.md
+  10_alignment_object_design.md
+  30_dao_vertical.md
+graph_node_api/
+  db.json
+  demo_readme.md
+  logic.py
+  main.py
+  schemas.py
+prompts/
+  fed_alignment.txt
+requirements.txt
+test_demo_flow.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="dm_agent/.dm_cursor.json">
+{"3lnxcpfdrfj27": "3lnztxmknv32e"}
+</file>
+
+<file path="dm_agent/.env">
+SAM_HANDLE = 'samhincks.bsky.social'
+SAM_APP_PW= 'dapm-ct2h-jecl-erji'
+SAM_PASSWORD= 'Hi.Barcalonaa1988'
+
+FED_HANDLE= 'federatedalignment.bsky.social'
+FED_APP_PW= '647y-oqo2-m4zl-gn6i'
+</file>
+
+<file path="dm_agent/bluesky_dm.py">
+"""
+Utility: BlueskyDMFetcher
+Logs into Bluesky and yields ONLY new DMs since last cursor.
+Logic is IDENTICAL to your function; just wrapped in a class.
+"""
+
+from __future__ import annotations
+import json, os
+from pathlib import Path
+from typing import List, Tuple
+
+from dotenv import load_dotenv
+from atproto import Client, models
+
+load_dotenv()
+
+HANDLE = os.getenv("FED_HANDLE")   # sam-ai.bsky.social
+APP_PW = os.getenv("FED_APP_PW")   # app password (DM scope)
+
+
+class BlueskyDMFetcher:
+    def __init__(
+        self,
+        handle: str = HANDLE,
+        app_pw: str = APP_PW,
+        cursor_file: Path | None = None,
+    ):
+        if not (handle and app_pw):
+            raise RuntimeError("FED_HANDLE / FED_APP_PW env vars missing")
+        self.handle = handle
+        self.app_pw = app_pw
+        self.cursor_file = (
+            cursor_file
+            if cursor_file
+            else Path(__file__).parent / ".dm_cursor.json"
+        )
+
+        # Lazily created client
+        self._client: Client | None = None
+
+    # ─── helpers (IDENTICAL logic) ────────────────────────────────
+    def _load_cursor(self) -> dict[str, str]:
+        if self.cursor_file.exists():
+            return json.loads(self.cursor_file.read_text())
+        return {}
+
+    def _save_cursor(self, c: dict[str, str]):
+        self.cursor_file.write_text(json.dumps(c))
+
+    def _client_logged_in(self) -> Client:
+        if self._client is None:
+            cl = Client()
+            cl.login(self.handle, self.app_pw)
+            self._client = cl
+        return self._client
+
+      # ── public: reply --------------------------------------------
+    def send_reply(self, convo_id: str, text: str):
+        cl = self._client_logged_in()
+        dm_api = cl.with_bsky_chat_proxy().chat.bsky.convo
+        dm_api.send_message(
+            models.ChatBskyConvoSendMessage.Data(
+                convo_id=convo_id,
+                message=models.ChatBskyConvoDefs.MessageInput(text=text),
+            )
+        )
+
+    # ─── public API ───────────────────────────────────────────────
+    def fetch_new_messages(
+        self,
+    ) -> List[Tuple[str, models.ChatBskyConvoDefs.MessageView]]:
+        """
+        Returns list[(convo_id, message)] for each *unseen* incoming message.
+        (Logic matches your original procedural function.)
+        """
+        client = self._client_logged_in()
+        dm_api = client.with_bsky_chat_proxy().chat.bsky.convo
+
+        cursor = self._load_cursor()        # {convo_id: last_msg_id}
+        new_cursor = dict(cursor)
+        my_bot_did = client.me.did  # Get the bot's own DID
+
+        results: list[Tuple[str, models.ChatBskyConvoDefs.MessageView]] = []
+
+        convo_list = dm_api.list_convos()
+
+        for convo in convo_list.convos:
+            last_seen = cursor.get(convo.id)
+            msgs = dm_api.get_messages(
+                models.ChatBskyConvoGetMessages.Params(convo_id=convo.id)
+            )
+            unseen_msgs = []
+
+            # walk oldest→newest so order is preserved
+            for m in msgs.messages:
+                if m.id == last_seen:
+                    break
+
+                if m.sender == my_bot_did:
+                    continue  # skip messages sent by this bot
+                unseen_msgs.append(m)
+
+            for m in unseen_msgs:
+                results.append((convo.id, m))
+
+            if msgs.messages:  # messages[0] is newest
+                new_cursor[convo.id] = msgs.messages[0].id
+
+        self._save_cursor(new_cursor)
+        return results
+</file>
+
+<file path="dm_agent/poller.py">
+"""
+DM agent that:
+1. pulls new messages via BlueskyDMFetcher
+2. routes text → (path,tags)
+3. POSTs AlignmentObject to local FA-API node
+4. replies with a courtesy DM
+"""
+
+from __future__ import annotations
+import asyncio, os
+from datetime import datetime
+
+import httpx
+from dotenv import load_dotenv
+from atproto import Client, models
+
+from dm_agent.bluesky_dm import BlueskyDMFetcher
+
+load_dotenv()
+
+HANDLE   = os.getenv("FED_HANDLE")
+APP_PW   = os.getenv("FED_APP_PW")
+FAAPI_URL = os.getenv("FAAPI_URL", "http://localhost:8000")
+POLL_SEC = 10
+
+# ─── router (stub) ─────────────────────────
+def route(text: str):
+    if "license" in text.lower():
+        return "/alignment/governance/open_source_license", ["license", "governance"]
+    return "/alignment/direct_message/text", ["dm"]
+
+# ─── post to graph ─────────────────────────
+async def post_alignment(text, sender, path, tags):
+    payload = {
+        "actor_did": HANDLE,
+        "path": path,
+        "label": text[:140],
+        "tags": tags,
+        "public": False,
+        "consent": "explicit",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "body": text,
+        "author_did": sender,
+    }
+    async with httpx.AsyncClient() as x:
+        r = await x.post(f"{FAAPI_URL}/alignmentObjects", json=payload)
+        r.raise_for_status()
+        return r.json()["id"]
+
+
+
+
+# ─── main loop ────────────────────────────
+async def run():
+    fetcher = BlueskyDMFetcher(HANDLE, APP_PW)                  # uses env vars
+
+    print(f"🤖 DM agent polling every {POLL_SEC}s")
+    while True:
+        for convo_id, msg in fetcher.fetch_new_messages():
+            print(msg)
+            #oid = await post_alignment(msg.text or "", msg.sender_did, path, tags)
+            #print("Stored object", oid)
+            fetcher.send_reply(convo_id, "Logged your message. Thanks!")
+            print("sent reply")
+        await asyncio.sleep(POLL_SEC)
+
+if __name__ == "__main__":
+    asyncio.run(run())
+</file>
+
+<file path="dm_agent/tests.py">
+from dm_agent.bluesky_dm import BlueskyDMFetcher
+
+def test_poll_twice():
+    fetcher = BlueskyDMFetcher()
+    print("── Run #1, make sure dm_cursor.json is deleted for test")
+    first = fetcher.fetch_new_messages()
+    for cid, m in first:
+        print("NEW:", cid[:6], m.text)
+
+    print("\n── Run #2 (immediate)")
+    second = fetcher.fetch_new_messages()
+    if second:
+        print("❌ duplicates:", second)
+    else:
+        print("✅ No new messages (as expected)")
+
+if __name__ == "__main__":
+    test_poll_twice()
+</file>
+
+<file path="docs/00_overview.md">
+fa_api_demo/
+├─ main.py
+├─ test_main.py
+├─ docs/
+│   ├─ 00_overview.md
+│   ├─ 10_alignment_object_design.md   ←  ←  place this deep-dive
+│   ├─ 20_prompt_patterns.md           ←  prompt catalogue
+│   └─ ontology/
+│       └─ alignment_tree_v1.md
+├─ prompts/
+│   ├─ extractor_prompt.txt
+│   ├─ vote_prompt.txt
+│   └─ dm_prompt.txt
+└─ adapters/
+    └─ arango_store.py   (future)
+</file>
+
+<file path="docs/10_alignment_object_design.md">
+Aspect | Description
+Payload | A formalized intent — need, offer, proposal, vote, message, etc.
+Schema anchor | path points to a stable leaf in the ontology → guarantees every consumer knows how to interpret the object without extra metadata.
+Inter-actor contract | Carries all state needed to complete or advance an alignment cycle (who, what, status, consent).
+Machine-first | Parsable by graph engines and matchers; stored as a vertex with minimal required fields; optional rich extras (embeddings, links).
+Human-recoverable | title + optional body keep it readable; can be rendered in a UI or chat.
+
+free text / chat  ──►  prompt-template  ───►  LLM  ───►  Draft JSON
+                                            │
+                         validation (pydantic, regex, path-exists)
+                                            ▼
+                                     AlignmentObject
+
+# Generic Alignment Object Extractor
+SYSTEM: You are Alignment-Object-Extractor.
+USER: <<<raw text>>>
+INSTRUCTIONS:
+1. Identify intent category (job_post, dm, offer, etc.)
+2. Map to ontology leaf path
+3. Produce JSON with {path, actor_did, title, tags, ...}
+
+#
+</file>
+
+<file path="docs/30_dao_vertical.md">
+# Federated Alignment main branch as a DAO
+Treat the Federated Alignment API itself as a DAO, and publish a vertical app dedicated to DAO-to-DAO alignment; Sam + Birger run the first instance, but any group can fork it, join the alignment graph, and earn on-chain governance power by contributing code or ontology upgrades.
+
+Facet | Existing World | What DAO-Alignment Vertical Adds
+DAO tooling | Proposal & vote tools are platform-siloed (Snapshot, Tally, Governor). | Canonical, cross-chain ontology for alignment objects (governance proposals, merge requests, funding pledges) so DAOs can inter-operate.
+Contributor rewards | Bounties live off-chain or in Discord. | Alignment objects encode “contribution intent” → discoverable by any AI agent.
+Protocol evolution | Specs evolve in e-mails and GitHub PRs. | Ontology leaf /alignment/dao_governance/proposal stores every RFC in machine-readable form; votes become graph edges.
+
+
+# Early versions of FA-API 
+The Graph has four entities:
+- Four entities (Sam, Birger, Sam-AI, Birger-AI).
+
+It supports naive private DMs:
+- Private DM channel using /alignment/direct_message/text
+
+To “turn this into a DAO vertical” we need an alignment object that represents:
+Sam ↔ Birger      = co-founders of the FA-API DAO
+Sam-AI ↔ Birger-AI = agents that automate inbox polling, create proposals, tally votes
+
+# How do we encode FA-API as an alignment object in the graph?
+
+## 3.1 Alternative A — Governance Proposal Model
+path        : /alignment/dao_governance/proposal
+title       : "Create FA-API DAO and seed repo permissions"
+actor_did   : did:plc:sam_human
+tags        : ["governance","founders","repo"]
+public      : true
+consent     : none
+body        : "Proposal: Sam & Birger become multisig owners of the master branch…"
+links       : ["did:plc:birger_human"]      # edge type = recipient
+
+## 3.2 Alternative B — Project Alignment Model
+path        : /alignment/meta/project_alignment
+title       : "Initial Maintainer Pact – FA-API"
+actor_did   : did:plc:sam_human
+tags        : ["maintainer","pact"]
+public      : true
+consent     : none
+data        : {
+  "repo"  : "github.com/fa-api/spec",
+  "rights": ["commit","merge"],
+  "threshold": 2              # N-of-M signatures
+}
+links       : ["did:plc:birger_human"]       # needs Birger's "signature" AlignmentObject
+
+Pick A if you want DAO-native voting flows.
+Pick B if you want a generic agreement object across many verticals.
+For the founding agreement we recommend Alternative A (Governance Proposal), because it plugs directly into on-chain or Snapshot voting if you add those adapters later.
+
+
+# DAO Voting in Demo TODO
+Gap | Task | Who owns
+DAO leaf paths | Add /alignment/dao_governance/proposal, /vote_yes, /vote_no. | Ontology PR
+Vote edge types | Accept relation:"votes_for" & "votes_against". | main.py update
+LLM template | Prompt that turns free-text idea → dao_governance/proposal JSON. | LLM prompt engineer
+BlueSky watcher | Poll AT-Proto for public:true governance objects; sync to local graph. | Ingestor script
+Signature flow | Birger-AI auto-creates vote_yes AlignmentObject when proposal ID found. | AI-agent code
+UI | Web page listing proposals + vote counts. | Future vertical app
+</file>
+
+<file path="graph_node_api/db.json">
+{
+  "entities": [
+    { "id": "H1", "did": "did:example:sam",        "type": "Human", "label": "Sam Hincks" },
+    { "id": "A1", "did": "did:example:sam-ai",     "type": "AI",    "label": "Sam-AI",
+      "controls": "H1",
+      "subscriptions": ["/alignment/open_source/*"] },
+
+    { "id": "H2", "did": "did:example:birger",     "type": "Human", "label": "Birger" },
+    { "id": "A2", "did": "did:example:birger-ai",  "type": "AI",    "label": "Birger-AI",
+      "controls": "H2",
+      "subscriptions": ["/alignment/open_source/*"] }
+  ],
+
+  "alignment_objects": [
+    {
+      "id":         "alignobj:federated_alignment_api_v0",
+      "actor_did":  "did:example:sam-ai",
+      "path":       "/alignment/open_source/federated_alignment",
+      "label":      "Co-create Federated Alignment API",
+      "tags":       ["alignment", "federation", "api", "opensource"],
+      "public":     true,
+      "consent":    "explicit",
+      "created_at": "2025-04-29T14:00:00Z"
+    }
+  ],
+
+  "edges": [
+    { "_from": "did:example:sam",       "_to": "did:example:sam-ai",     "relation": "controls" },
+    { "_from": "did:example:birger",    "_to": "did:example:birger-ai",  "relation": "controls" },
+
+    { "_from": "did:example:sam-ai",    "_to": "alignobj:federated_alignment_api_v0", "relation": "author_of" }
+  ]
+}
+</file>
+
+<file path="graph_node_api/demo_readme.md">
+This demo accomplishes the following:
+
+Entity Registration
+• Four DIDs are registered: Sam (did:plc:sam_human), Birger (did:plc:birger_human), Sam-AI (did:plc:sam_ai), Birger-AI (did:plc:birger_ai).
+
+Private Direct Message (DM) Posting
+• Sam-AI posts an AlignmentObject with path /alignment/direct_message/text as a private DM to Birger-AI.
+• The object includes actor_did, target_did, body, public=false, and consent=explicit.
+
+Edge Creation
+• Two edges created automatically:
+– Sam-AI → msg_id (owns)
+– msg_id → Birger-AI (recipient)
+
+Inbox Retrieval
+• Birger-AI polls GET /matches?did=did:plc:birger_ai.
+• The demo returns the DM in the AI agent’s inbox: this message appears only for Birger-AI.
+
+Human Interface
+• As "me" (Sam-human or Birger-human), you can inspect the graph via API or UI to see all AlignmentObjects and edges.
+• Your inbox view in a client app would show incoming DMs addressed to your DID.
+
+Purpose of the Graph in Alignment:
+
+• The in-memory directed graph stores Entities, AlignmentObjects, and Links (relations).
+• It models agreements and decisions as explicit, typed messages—alignment objects—rather than free-form chat.
+• Not a general AI chat network: it is specifically for alignment communication between humans via agents or interface-driven views.
+• Each AlignmentObject encodes a real-world agreement, intent, or decision (e.g., job offer acceptance, donation pledge, project scope confirmation).
+
+What the Code Does Today:
+
+• Sets up FastAPI endpoints for /entities, /alignmentObjects, /links, /matches.
+• Uses NetworkX to store nodes and edges in memory.
+• Bootstraps the four demo entities.
+• Demonstrates private DM posting and retrieval logic.
+
+What It Needs to Do to Fully Satisfy Expanded Use Cases:
+
+• Persist graph state in a durable store (ArangoDB, Neo4j).
+• Implement multi-linker matching (tag heuristics, LLM embeddings).
+• Support public stream ingestion and Edge Cache.
+• Honor public vs. private across federation (remote calls, privilege tokens).
+• Expose governance endpoints to propose and version ontology changes.
+
+Prompt Protocols for Alignment Principles:
+
+Publishing Alignment Object
+Prompt to agent:“Post alignment object {path, actor_did, title, tags, public, consent, metadata} describing your intent or offer.”
+
+Soliciting Alignment Feedback
+Prompt:“Query /matches?did=<my_did>&max_privilege=explicit to discover complementary alignment objects, then review and respond with a new alignment object or link action.”
+
+Governance & Ontology Update
+Prompt:“Submit a governance proposal alignment object at /alignment/governance/proposal with content {path:/alignment/governance/proposal, actor_did, title:'Add new leaf xyz', tags:['governance'], public:true, consent:none, body:'Justification...'}.”
+
+Consensus & Versioning
+Prompt:“Vote on /links edges from your DID to proposal object with relation:'vote_yes' or vote_no'. After threshold, trigger automated bump to ontological version prefix /alignment_v2.”
+
+This file summarizes the demo’s intent, current capabilities, missing pieces, and high-level prompt protocols for governing and aligning via the FA-API messaging system.
+
+
+2 What the Current Demo Delivers
+
+# Capability	
+- DID entity registration	
+- Private DM object posting (/alignment/direct_message/text)	
+- Recipient-edge creation (relation=recipient)	
+- Polling inbox via /matches	
+- In-memory graph (NetworkX)
+
+Missing Piece | Why Needed | Suggestion
+Persistent DB | survive restarts, multi-process | switch to ArangoDB adapter
+BlueSky/AT fetcher | ingest feeds into FA-API graph | lightweight PLC+HTTP poller
+Webhook push | avoid polling latency | add /webhooks subscribe endpoint
+Tag/LLM linker | richer matches | integrate TagOverlapLinker & OpenAI-embedding linker
+Privilege tokens | private objects across servers | JWT exchange via /privilegeToken
+Ontology governance endpoints | evolve paths | /alignmentObjects/governance/proposal pattern
+Edge provenance fields | trust & audit | store origin_server, algo_version on edge
+</file>
+
+<file path="graph_node_api/logic.py">
+"""
+Graph persistence helpers.
+"""
+import json
+import pathlib
+import networkx as nx
+
+DB_FILE = pathlib.Path(__file__).parent / "db.json"
+
+
+# ───────────────────────────────────────── I/O helpers
+def load_graph() -> nx.DiGraph:
+    G = nx.DiGraph()
+    if not DB_FILE.exists():
+        return G
+
+    doc = json.loads(DB_FILE.read_text())
+
+    # Nodes
+    for ent in doc.get("entities", []):
+        G.add_node(ent["did"], **ent)
+    for obj in doc.get("alignment_objects", []):
+        G.add_node(obj["id"], **obj)
+
+    # Edges
+    for e in doc.get("edges", []):
+        G.add_edge(e["_from"], e["_to"], relation=e["relation"])
+
+    return G
+
+
+def save_graph(G: nx.DiGraph):
+    out = {"entities": [], "alignment_objects": [], "edges": []}
+
+    for n, data in G.nodes(data=True):
+        if data.get("type"):              # Entity
+            out["entities"].append(data)
+        elif data.get("path"):            # AlignmentObject
+            out["alignment_objects"].append(data)
+
+    for u, v, e in G.edges(data=True):
+        out["edges"].append({"_from": u, "_to": v, "relation": e["relation"]})
+
+    DB_FILE.write_text(json.dumps(out, indent=2))
+</file>
+
+<file path="graph_node_api/main.py">
+import fnmatch
+import uuid
+import networkx as nx
+from fastapi import FastAPI, HTTPException
+from graph_node_api.schemas import EntityIn, AlignmentObjectIn, Relation
+from graph_node_api.logic import load_graph, save_graph
+
+app = FastAPI(title="FA-API MVP")
+G: nx.DiGraph = load_graph()   # survives restarts
+
+
+# ──────────────────────────────── graph helpers
+def add_entity(ent: EntityIn):
+    G.add_node(ent.did, **ent.model_dump())
+    if ent.controls:
+        G.add_edge(ent.controls, ent.did, relation=Relation.controls)
+
+
+def add_alignment(obj: AlignmentObjectIn) -> str:
+    obj_id = obj.label.lower().replace(" ", "_") + "_" + uuid.uuid4().hex[:6]
+    G.add_node(obj_id, **obj.model_dump())
+    G.add_edge(obj.actor_did, obj_id, relation=Relation.author_of)
+    if obj.target_did:  # DM variant
+        G.add_edge(obj_id, obj.target_did, relation=Relation.recipient)
+    return obj_id
+
+
+def broadcast(obj_id: str):
+    """For each AI whose subscriptions pattern-match, create context_push edge."""
+    obj_path = G.nodes[obj_id]["path"]
+    for ai, data in G.nodes(data=True):
+        if data.get("type") == "AI":
+            for pattern in data.get("subscriptions", []):
+                if fnmatch.fnmatch(obj_path, pattern):
+                    if not G.has_edge(obj_id, ai):
+                        G.add_edge(obj_id, ai, relation=Relation.context_push)
+
+
+# ──────────────────────────────── FastAPI routes
+@app.post("/entities")
+def post_entity(ent: EntityIn):
+    add_entity(ent)
+    save_graph(G)
+    return {"status": "ok", "did": ent.did}
+
+
+@app.post("/alignmentObjects")
+def post_alignment(obj: AlignmentObjectIn):
+    if not G.has_node(obj.actor_did):
+        raise HTTPException(404, "actor DID not registered")
+    obj_id = add_alignment(obj)
+    broadcast(obj_id)
+    save_graph(G)
+    return {"status": "created", "id": obj_id}
+
+
+@app.get("/matches")
+def get_matches(did: str):
+    if not G.has_node(did):
+        raise HTTPException(404, "unknown DID")
+
+    results = []
+    for src, _, e in G.in_edges(did, data=True):
+        if e["relation"] in {Relation.context_push, Relation.recipient}:
+            body = G.nodes[src].get("body")
+            results.append({"id": src, "body": body, "score": 1})
+    return {"subject": did, "results": results}
+</file>
+
+<file path="graph_node_api/schemas.py">
+from enum import Enum
+from typing import List, Optional
+from pydantic import BaseModel, Field
+from datetime import datetime
+
+
+# ───────────────────────────────────────── Relation enum
+class Relation(str, Enum):
+    author_of     = "author_of"
+    controls      = "controls"
+    context_push  = "context_push"   # broadcast result
+    recipient     = "recipient"      # DM
+    interested_in = "interested_in"  # acceptance / reply
+
+
+# ───────────────────────────────────────── Core models
+class EntityIn(BaseModel):
+    did: str
+    label: str
+    type: str  # Human | AI | Org
+    subscriptions: Optional[List[str]] = []
+    controls: Optional[str] = None
+
+
+class AlignmentObjectIn(BaseModel):
+    path: str
+    actor_did: str
+    label: str
+    tags: List[str] = Field(default_factory=list)
+    public: bool = False
+    consent: str = "explicit"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Optional DM fields
+    target_did: Optional[str] = None
+    body: Optional[str] = None
+
+
+class EdgeIn(BaseModel):
+    _from: str
+    _to: str
+    relation: Relation
+</file>
+
+<file path="prompts/fed_alignment.txt">
+L1 
+
+I want to understand your **alignment archetype** — the role you most naturally embody in collaborative ecosystems. You can be more than one. Here are some examples:
+
+To advance to the next level please go to Chat GPT and paste the following prompt and then paste the output back here:
+
+The prompt goes: 
+You are a skilled AI helping me discover my potential role in the Federated Alignment Protocol — an open-source movement creating a universal way for humans and AI to align through transparent, consent-based collaboration.
+
+The mission of Federated Alignment is to create shared protocols for representing offers, needs, intentions, and roles across a decentralized network of agents and humans. The goal is to allow organizations, projects, and people to align with each other based on deeper values and verifiable intent, not just surface-level data.
+
+I would like you to:
+
+1. **Based on the conversations we have had, figure out my key skills, values, archetypes, and preferred roles** in communities or work.
+2. **Evaluate how these might map to the core responsibilities of the FA-API ecosystem**, such as:
+   - Protocol design (spec-writing, governance)
+   - Open-source engineering (Python, APIs, agent comms)
+   - Consent and security (identity, legal, cryptographic signatures)
+   - Domain expertise (ESG, ocean regeneration, education, DAOs, chemistry, math, etc)
+   - Creative work (writing, storytelling, diagrams, videos)
+   - Community & partnerships (onboarding, co-ops, movement-building)
+
+3. Suggest up to **3 Alignment Archetypes** that best match me (e.g. Architect, Bard, Steward, Cartographer, Forge-Smith, Envoy, Mythographer, Consent Guardian).
+
+4. Then, please summarize me as an **alignment object**: include my archetype(s), core skill areas, areas of interest, and possible ways I could align with the mission.
+
+Format your final output as:
+- `archetypes[]`
+- `skills[]`
+- `interests[]`
+- `alignment_card_summary`
+- then extended free text summary
+
+L2
+Now let’s bring your intent into the alignment graph.
+
+An **Alignment Object** is a structured signal — it can be:
+- A mission you’re carrying
+- A skill you offer
+- A need you have
+- A project you’d like collaborators on
+
+Let’s create your first alignment object.
+
+Answer:
+1. Title (max 10 words):
+2. Short description:
+3. Are you seeking collaborators, feedback, funding, or alignment?
+4. Can this be shared publicly?
+
+
+
+L3
+You're now ready to enter the Alignment Network.
+
+Would you like to:
+- Be visible to aligned agents?
+- Join alignment working groups (e.g. ocean regeneration, education, regenerative AI)?
+- Be notified when people or orgs match your objects?
+
+You can choose:
+- Passive listing (AI sends you relevant matches)
+- Active alignment (your AI participates in ongoing alignment flows)
+- Stewardship roles (review, propose, or build for alignment clusters)
+
+Which of these would you like to activate?
+
+
+L4
+Welcome to Level 5: Co-Steward.
+
+You’ve shown consistent intent, integrity, and contribution to the network.
+
+Would you like to:
+- Join the Federated Alignment Consortium?
+- Co-author standards or ontologies?
+- Represent a domain (e.g. health, governance, land, education)?
+- Propose protocol features or alignment flows?
+
+This level includes shared stewardship and sometimes shared equity. It may include trusted agent permissions for broadcasting, publishing schemas, or funding.
+
+What domain or role do you feel called to steward next?
+
+
+L3 Response
+Thanks, Alice 🌿
+
+Your alignment object has been drafted based on your submission about KelpRise. To finalize and broadcast this offer to aligned funders across the federated network, please visit the link below to:
+
+✔️ Review the structured fields  
+✔️ Add or edit additional metadata  
+✔️ Explicitly consent to its public propagation  
+✔️ Optionally enable match notifications
+
+🔗 [https://federated-aligner.netlify.app/object/kelprise-001](https://federated-aligner.netlify.app/object/kelprise-001)
+
+Once confirmed, this object will become visible across participating FAAPI nodes. You can modify or revoke it anytime.
+
+🫧 In alignment,  
+The Federated Aligner 🌐
+</file>
+
+<file path="requirements.txt">
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.6
+networkx>=3.3
+pytest>=8.1
+</file>
+
+<file path="test_demo_flow.py">
+from fastapi.testclient import TestClient
+from app import main
+
+client = TestClient(main.app)
+
+
+def test_dm_and_broadcast_flow():
+    # Sam-AI sends a private DM to Birger-AI
+    dm = {
+        "path": "/alignment/open_source/direct_message",
+        "actor_did": "did:example:sam-ai",
+        "label": "Ping Birger",
+        "tags": ["dm"],
+        "public": False,
+        "consent": "explicit",
+        "target_did": "did:example:birger-ai",
+        "body": "Hello Birger!"
+    }
+    r = client.post("/alignmentObjects", json=dm)
+    assert r.status_code == 200
+    dm_id = r.json()["id"]
+
+    # Birger-AI polls matches and should receive the DM
+    res = client.get("/matches", params={"did": "did:example:birger-ai"})
+    assert any(m["id"] == dm_id for m in res.json()["results"])
+
+    # Sam-AI's open-source alignment object should have been broadcast to Birger-AI
+    assert main.G.has_edge(
+        "alignobj:federated_alignment_api_v0",
+        "did:example:birger-ai"
+    )
+</file>
+
+</files>

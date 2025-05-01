@@ -1,0 +1,100 @@
+L1 
+
+I want to understand your **alignment archetype** — the role you most naturally embody in collaborative ecosystems. You can be more than one. Here are some examples:
+
+To advance to the next level please go to Chat GPT and paste the following prompt and then paste the output back here:
+
+The prompt goes: 
+You are a skilled AI helping me discover my potential role in the Federated Alignment Protocol — an open-source movement creating a universal way for humans and AI to align through transparent, consent-based collaboration.
+
+The mission of Federated Alignment is to create shared protocols for representing offers, needs, intentions, and roles across a decentralized network of agents and humans. The goal is to allow organizations, projects, and people to align with each other based on deeper values and verifiable intent, not just surface-level data.
+
+I would like you to:
+
+1. **Based on the conversations we have had, figure out my key skills, values, archetypes, and preferred roles** in communities or work.
+2. **Evaluate how these might map to the core responsibilities of the FA-API ecosystem**, such as:
+   - Protocol design (spec-writing, governance)
+   - Open-source engineering (Python, APIs, agent comms)
+   - Consent and security (identity, legal, cryptographic signatures)
+   - Domain expertise (ESG, ocean regeneration, education, DAOs, chemistry, math, etc)
+   - Creative work (writing, storytelling, diagrams, videos)
+   - Community & partnerships (onboarding, co-ops, movement-building)
+
+3. Suggest up to **3 Alignment Archetypes** that best match me (e.g. Architect, Bard, Steward, Cartographer, Forge-Smith, Envoy, Mythographer, Consent Guardian).
+
+4. Then, please summarize me as an **alignment object**: include my archetype(s), core skill areas, areas of interest, and possible ways I could align with the mission.
+
+Format your final output as:
+- `archetypes[]`
+- `skills[]`
+- `interests[]`
+- `alignment_card_summary`
+- then extended free text summary
+
+L2
+Now let’s bring your intent into the alignment graph.
+
+An **Alignment Object** is a structured signal — it can be:
+- A mission you’re carrying
+- A skill you offer
+- A need you have
+- A project you’d like collaborators on
+
+Let’s create your first alignment object.
+
+Answer:
+1. Title (max 10 words):
+2. Short description:
+3. Are you seeking collaborators, feedback, funding, or alignment?
+4. Can this be shared publicly?
+
+
+
+L3
+You're now ready to enter the Alignment Network.
+
+Would you like to:
+- Be visible to aligned agents?
+- Join alignment working groups (e.g. ocean regeneration, education, regenerative AI)?
+- Be notified when people or orgs match your objects?
+
+You can choose:
+- Passive listing (AI sends you relevant matches)
+- Active alignment (your AI participates in ongoing alignment flows)
+- Stewardship roles (review, propose, or build for alignment clusters)
+
+Which of these would you like to activate?
+
+
+L4
+Welcome to Level 5: Co-Steward.
+
+You’ve shown consistent intent, integrity, and contribution to the network.
+
+Would you like to:
+- Join the Federated Alignment Consortium?
+- Co-author standards or ontologies?
+- Represent a domain (e.g. health, governance, land, education)?
+- Propose protocol features or alignment flows?
+
+This level includes shared stewardship and sometimes shared equity. It may include trusted agent permissions for broadcasting, publishing schemas, or funding.
+
+What domain or role do you feel called to steward next?
+
+
+L3 Response
+Thanks, Alice 🌿
+
+Your alignment object has been drafted based on your submission about KelpRise. To finalize and broadcast this offer to aligned funders across the federated network, please visit the link below to:
+
+✔️ Review the structured fields  
+✔️ Add or edit additional metadata  
+✔️ Explicitly consent to its public propagation  
+✔️ Optionally enable match notifications
+
+🔗 [https://federated-aligner.netlify.app/object/kelprise-001](https://federated-aligner.netlify.app/object/kelprise-001)
+
+Once confirmed, this object will become visible across participating FAAPI nodes. You can modify or revoke it anytime.
+
+🫧 In alignment,  
+The Federated Aligner 🌐
